@@ -150,11 +150,29 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
-        
-        // Enforce Smart Unli Data Bypass payload
-        val newCmd = "-n opensignal.com -f -1 -t 4"
-        if (sharedPrefs.getString("byedpi_cmd", "") != newCmd) {
-            sharedPrefs.edit().putString("byedpi_cmd", newCmd).apply()
+        // Setup Payload Dropdown
+        val payloadOptions = arrayOf("Smart Unli Data Bypass", "Tiktok Bypass")
+        val payloadCommands = arrayOf("-n opensignal.com -f -1 -t 4", "-n m.tiktok.com -f -1 -t 4")
+
+        val adapter = android.widget.ArrayAdapter(this, R.layout.spinner_item, payloadOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.payloadSpinner.adapter = adapter
+
+        // Set initial selection
+        val currentCmd = sharedPrefs.getString("byedpi_cmd", payloadCommands[0])
+        val selectedIndex = payloadCommands.indexOf(currentCmd).takeIf { it >= 0 } ?: 0
+        binding.payloadSpinner.setSelection(selectedIndex)
+
+        // Listen for selection changes
+        binding.payloadSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val selectedCmd = payloadCommands[position]
+                if (sharedPrefs.getString("byedpi_cmd", "") != selectedCmd) {
+                    sharedPrefs.edit().putString("byedpi_cmd", selectedCmd).apply()
+                }
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
         // UI logic for switches has been moved to SettingsActivity
