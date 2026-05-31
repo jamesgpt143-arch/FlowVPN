@@ -15,7 +15,7 @@ void reset_params(void) {
     params = default_params;
 }
 
-extern const struct option options[38];
+extern const struct option options[39];
 
 int parse_args(int argc, char **argv)
 {
@@ -64,6 +64,9 @@ int parse_args(int argc, char **argv)
                 break;
             case 'U':
                 params.udp = 0;
+                break;
+            case 'Q':
+                params.block_quic = 1;
                 break;
 
 //            case 'h':

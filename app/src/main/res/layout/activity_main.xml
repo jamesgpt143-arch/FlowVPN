@@ -4,38 +4,177 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_vertical"
+    android:background="@color/bg_dark"
     tools:context=".activities.MainActivity">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/status_button"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="wrap_content"
+    <!-- Top: Payload Selection -->
+    <LinearLayout
+        android:id="@+id/host_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:paddingLeft="10pt"
-        android:paddingTop="5pt"
-        android:paddingRight="10pt"
-        android:paddingBottom="5pt"
-        android:textAllCaps="false"
-        android:textSize="24sp"
-        tools:text="@string/vpn_connect" />
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="20dp"
+        android:elevation="4dp">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/payload_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@android:color/white"
+            android:text="Smart Unli Data Bypass" />
+            
+    </LinearLayout>
+
+    <!-- Center: Power Button & Status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/host_card"
+        android:layout_above="@+id/traffic_card"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <FrameLayout
+            android:id="@+id/power_container"
+            android:layout_width="160dp"
+            android:layout_height="160dp">
+            
+            <ImageView
+                android:id="@+id/power_glow"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:src="@drawable/bg_power_glow"
+                app:tint="@color/gray_glow" />
+
+            <ImageView
+                android:id="@+id/power_button"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_power_button"
+                android:src="@drawable/ic_power"
+                android:padding="25dp"
+                android:clickable="true"
+                android:focusable="true" />
+                
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:textSize="28sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="bold"
+            android:textColor="@color/gray_accent"
+            tools:text="Disconnected" />
+
+        <TextView
+            android:id="@+id/connection_time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/teal_accent"
+            android:visibility="gone"
+            tools:text="00:05:30" />
+
+        <TextView
+            android:id="@+id/current_ip_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/text_muted"
+            android:visibility="gone"
+            tools:text="IP: 192.168.1.1" />
+
+        <TextView
+            android:id="@+id/ping_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/teal_accent"
+            android:visibility="gone"
+            tools:text="Ping: 45ms" />
+            
+    </LinearLayout>
+
+    <!-- Bottom: Traffic Monitor -->
+    <LinearLayout
+        android:id="@+id/traffic_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/status_button"
-        android:layout_marginTop="8dp"
-        android:layout_centerHorizontal="true"
-        tools:text="@string/vpn_disconnected" />
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="40dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:elevation="4dp">
 
-    <com.google.android.material.textview.MaterialTextView
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-medium"
+                android:textStyle="bold"
+                android:textColor="@color/text_light"
+                android:layout_weight="1"
+                android:text="Traffic Monitor" />
+
+            <TextView
+                android:id="@+id/total_data_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/teal_accent"
+                android:text="Total: 0.00 MB" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/traffic_speed_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="14sp"
+            android:textColor="@color/text_muted"
+            android:text="0.00 Kbps" />
+
+        <io.github.dovecoteescapee.byedpi.views.TrafficMonitorView
+            android:id="@+id/traffic_graph"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+
+    <TextView
         android:id="@+id/proxy_address"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/status_text"
-        android:layout_centerHorizontal="true"
-        tools:text="127.0.0.1:1080" />
+        android:visibility="gone" />
 
 </RelativeLayout>

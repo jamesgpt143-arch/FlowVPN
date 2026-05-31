@@ -1,6 +1,10 @@
 package io.github.dovecoteescapee.byedpi.activities
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -13,9 +17,12 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.PreferenceManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.dovecoteescapee.byedpi.R
@@ -27,10 +34,20 @@ import io.github.dovecoteescapee.byedpi.services.appStatus
 import io.github.dovecoteescapee.byedpi.utility.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private var trafficJob: kotlinx.coroutines.Job? = null
+    private var glowAnimator: ObjectAnimator? = null
+    private var lastRxBytes = 0L
+    private var lastTxBytes = 0L
+    private var initialRxBytes = 0L
+    private var initialTxBytes = 0L
+    private var connectionStartTime: Long = 0L
 
     companion object {
         private val TAG: String = MainActivity::class.java.simpleName
@@ -103,8 +120,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             when (val action = intent.action) {
-                STARTED_BROADCAST,
-                STOPPED_BROADCAST -> updateStatus()
+                STARTED_BROADCAST -> {
+                    if (connectionStartTime == 0L) connectionStartTime = System.currentTimeMillis()
+                    updateStatus()
+                }
+                STOPPED_BROADCAST -> {
+                    connectionStartTime = 0L
+                    updateStatus()
+                }
 
                 FAILED_BROADCAST -> {
                     Toast.makeText(
@@ -126,6 +149,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        
+        // Enforce Smart Unli Data Bypass payload
+        val newCmd = "-n opensignal.com -f -1 -t 4"
+        if (sharedPrefs.getString("byedpi_cmd", "") != newCmd) {
+            sharedPrefs.edit().putString("byedpi_cmd", newCmd).apply()
+        }
+
+        // UI logic for switches has been moved to SettingsActivity
+
         val intentFilter = IntentFilter().apply {
             addAction(STARTED_BROADCAST)
             addAction(STOPPED_BROADCAST)
@@ -139,7 +172,7 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(receiver, intentFilter)
         }
 
-        binding.statusButton.setOnClickListener {
+        binding.powerButton.setOnClickListener {
             val (status, _) = appStatus
             when (status) {
                 AppStatus.Halted -> start()
@@ -238,33 +271,153 @@ class MainActivity : AppCompatActivity() {
 
         when (status) {
             AppStatus.Halted -> {
+                binding.powerGlow.imageTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.gray_glow))
+                binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.gray_accent))
+                binding.connectionTimeText.visibility = android.view.View.GONE
+                binding.currentIpText.visibility = android.view.View.GONE
+                binding.pingText.visibility = android.view.View.GONE
+                
                 when (preferences.mode()) {
                     Mode.VPN -> {
                         binding.statusText.setText(R.string.vpn_disconnected)
-                        binding.statusButton.setText(R.string.vpn_connect)
                     }
-
                     Mode.Proxy -> {
                         binding.statusText.setText(R.string.proxy_down)
-                        binding.statusButton.setText(R.string.proxy_start)
                     }
                 }
-                binding.statusButton.isEnabled = true
+                binding.powerButton.isEnabled = true
+                stopTrafficMonitor()
             }
 
             AppStatus.Running -> {
+                binding.powerGlow.imageTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.teal_glow))
+                binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.teal_accent))
+                binding.connectionTimeText.visibility = android.view.View.VISIBLE
+
+                if (binding.currentIpText.visibility == android.view.View.GONE) {
+                    binding.currentIpText.visibility = android.view.View.VISIBLE
+                    binding.currentIpText.text = "IP: Fetching..."
+                    fetchPublicIp()
+                }
+                
+                binding.pingText.visibility = android.view.View.VISIBLE
+
                 when (mode) {
                     Mode.VPN -> {
                         binding.statusText.setText(R.string.vpn_connected)
-                        binding.statusButton.setText(R.string.vpn_disconnect)
                     }
-
                     Mode.Proxy -> {
                         binding.statusText.setText(R.string.proxy_up)
-                        binding.statusButton.setText(R.string.proxy_stop)
                     }
                 }
-                binding.statusButton.isEnabled = true
+                binding.powerButton.isEnabled = true
+                startTrafficMonitor()
+            }
+        }
+    }
+
+    private fun startTrafficMonitor() {
+        if (trafficJob?.isActive == true) return
+        
+        lastRxBytes = android.net.TrafficStats.getTotalRxBytes()
+        lastTxBytes = android.net.TrafficStats.getTotalTxBytes()
+        initialRxBytes = lastRxBytes
+        initialTxBytes = lastTxBytes
+        binding.trafficGraph.clear()
+
+        val scaleX = PropertyValuesHolder.ofFloat("scaleX", 1.0f, 1.15f)
+        val scaleY = PropertyValuesHolder.ofFloat("scaleY", 1.0f, 1.15f)
+        val alpha = PropertyValuesHolder.ofFloat("alpha", 0.6f, 1.0f)
+        glowAnimator = ObjectAnimator.ofPropertyValuesHolder(binding.powerGlow, scaleX, scaleY, alpha).apply {
+            duration = 1500
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+
+        trafficJob = lifecycleScope.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(1000)
+                val rx = android.net.TrafficStats.getTotalRxBytes()
+                val tx = android.net.TrafficStats.getTotalTxBytes()
+                
+                val rxDiff = rx - lastRxBytes
+                val txDiff = tx - lastTxBytes
+                
+                val totalUsed = (rx - initialRxBytes) + (tx - initialTxBytes)
+                val totalMb = totalUsed / (1024f * 1024f)
+                binding.totalDataText.text = String.format("Total: %.2f MB", totalMb)
+                
+                lastRxBytes = rx
+                lastTxBytes = tx
+                
+                val speedBytes = rxDiff + txDiff
+                val speedKbps = speedBytes / 1024f
+                
+                binding.trafficSpeedText.text = String.format("%.2f Kbps", speedKbps)
+                binding.trafficGraph.addDataPoint(speedKbps)
+
+                if (connectionStartTime > 0L) {
+                    val elapsedSecs = (System.currentTimeMillis() - connectionStartTime) / 1000
+                    val h = elapsedSecs / 3600
+                    val m = (elapsedSecs % 3600) / 60
+                    val s = elapsedSecs % 60
+                    binding.connectionTimeText.text = String.format("%02d:%02d:%02d", h, m, s)
+                }
+
+                // Ping check every ~2 seconds (we are in a 1-second loop, so we can just do it on even seconds)
+                if ((System.currentTimeMillis() / 1000) % 2 == 0L) {
+                    launch(Dispatchers.IO) {
+                        try {
+                            val startPing = System.currentTimeMillis()
+                            val socket = java.net.Socket()
+                            socket.connect(java.net.InetSocketAddress("1.1.1.1", 53), 2000)
+                            socket.close()
+                            val endPing = System.currentTimeMillis()
+                            val pingMs = endPing - startPing
+                            withContext(Dispatchers.Main) {
+                                binding.pingText.text = "Ping: ${pingMs}ms"
+                                binding.pingText.setTextColor(if (pingMs < 100) ContextCompat.getColor(this@MainActivity, R.color.teal_accent) else ContextCompat.getColor(this@MainActivity, android.R.color.holo_orange_light))
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                binding.pingText.text = "Ping: Timeout"
+                                binding.pingText.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_light))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopTrafficMonitor() {
+        trafficJob?.cancel()
+        trafficJob = null
+        
+        glowAnimator?.cancel()
+        glowAnimator = null
+        binding.powerGlow.scaleX = 1.0f
+        binding.powerGlow.scaleY = 1.0f
+        binding.powerGlow.alpha = 1.0f
+        
+        binding.trafficSpeedText.text = "0.00 Kbps"
+        binding.totalDataText.text = "Total: 0.00 MB"
+        binding.trafficGraph.clear()
+    }
+
+    private fun fetchPublicIp() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val ip = URL("https://api.ipify.org").readText()
+                withContext(Dispatchers.Main) {
+                    binding.currentIpText.text = "IP: $ip"
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.currentIpText.text = "IP: Unavailable"
+                }
             }
         }
     }

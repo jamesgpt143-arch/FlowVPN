@@ -5,56 +5,19 @@
     android:tag="main_settings">
 
     <androidx.preference.PreferenceCategory
-        android:title="@string/general_category">
-
-        <DropDownPreference
-            android:key="app_theme"
-            android:title="@string/theme_settings"
-            android:entries="@array/themes"
-            android:entryValues="@array/themes_entries"
-            android:defaultValue="system"
-            app:useSimpleSummaryProvider="true" />
-
-        <DropDownPreference
-            android:key="byedpi_mode"
-            android:title="@string/mode_setting"
-            android:entries="@array/byedpi_modes"
-            android:entryValues="@array/byedpi_modes_entries"
-            android:defaultValue="vpn"
-            app:useSimpleSummaryProvider="true" />
-
-        <com.takisoft.preferencex.EditTextPreference
-            android:key="dns_ip"
-            android:title="@string/dbs_ip_setting"
-            android:defaultValue="1.1.1.1"
-            app:useSimpleSummaryProvider="true" />
+        android:title="Bypass Settings">
 
         <SwitchPreference
-            android:key="ipv6_enable"
-            android:title="@string/ipv6_setting"
-            android:defaultValue="false" />
-
-    </androidx.preference.PreferenceCategory>
-
-    <androidx.preference.PreferenceCategory
-        android:title="@string/byedpi_category">
+            android:key="block_udp_quic"
+            android:title="Block UDP (Disable QUIC)"
+            android:summary="Fixes buffering on YouTube and Facebook by forcing TCP connection."
+            android:defaultValue="true" />
 
         <SwitchPreference
-            android:key="byedpi_enable_cmd_settings"
-            android:title="@string/use_command_line_settings"
+            android:key="block_ads"
+            android:title="Block Ads (AdGuard DNS)"
+            android:summary="Blocks annoying ads across all apps and browsers."
             android:defaultValue="false" />
-
-        <Preference
-            android:key="byedpi_ui_settings"
-            android:title="@string/ui_editor"
-            app:useSimpleSummaryProvider="true"
-            app:fragment="io.github.dovecoteescapee.byedpi.fragments.ByeDpiUISettingsFragment" />
-
-        <Preference
-            android:key="byedpi_cmd_settings"
-            android:title="@string/command_line_editor"
-            app:useSimpleSummaryProvider="true"
-            app:fragment="io.github.dovecoteescapee.byedpi.fragments.ByeDpiCommandLineSettingsFragment" />
 
     </androidx.preference.PreferenceCategory>
 
@@ -68,13 +31,10 @@
             tools:summary="1.0.0" />
 
         <Preference
-            android:key="source_code"
-            android:title="@string/source_code_link"
-            android:icon="@drawable/ic_github_36">
-            <intent
-                android:action="android.intent.action.VIEW"
-                android:data="https://github.com/dovecoteescapee/ByeDPIAndroid" />
-        </Preference>
+            android:key="check_update"
+            android:title="Check for Updates"
+            android:summary="Check if a new version is available"
+            android:icon="@drawable/baseline_settings_24" />
 
     </androidx.preference.PreferenceCategory>
 

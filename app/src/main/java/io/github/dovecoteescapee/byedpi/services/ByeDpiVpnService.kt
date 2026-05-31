@@ -179,7 +179,8 @@ class ByeDpiVpnService : LifecycleVpnService() {
 
         val sharedPreferences = getPreferences()
         val port = sharedPreferences.getString("byedpi_proxy_port", null)?.toInt() ?: 1080
-        val dns = sharedPreferences.getStringNotNull("dns_ip", "1.1.1.1")
+        val blockAds = sharedPreferences.getBoolean("block_ads", false)
+        val dns = if (blockAds) "94.140.14.14" else "1.1.1.1"
         val ipv6 = sharedPreferences.getBoolean("ipv6_enable", false)
 
         val tun2socksConfig = """

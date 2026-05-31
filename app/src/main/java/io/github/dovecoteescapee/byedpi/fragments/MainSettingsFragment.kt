@@ -1,5 +1,8 @@
 package io.github.dovecoteescapee.byedpi.fragments
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
@@ -30,73 +33,62 @@ class MainSettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private val preferenceListener =
-        SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-            updatePreferences()
-        }
+    private var downloadReceiver: BroadcastReceiver? = null
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.main_settings, rootKey)
 
-        setEditTextPreferenceListener("dns_ip") {
-            it.isBlank() || checkNotLocalIp(it)
-        }
+        findPreferenceNotNull<Preference>("version").summary = BuildConfig.VERSION_NAME
 
-        findPreferenceNotNull<DropDownPreference>("app_theme")
-            .setOnPreferenceChangeListener { _, newValue ->
-                setTheme(newValue as String)
-                true
-            }
-
-        val switchCommandLineSettings = findPreferenceNotNull<SwitchPreference>(
-            "byedpi_enable_cmd_settings"
-        )
-        val uiSettings = findPreferenceNotNull<Preference>("byedpi_ui_settings")
-        val cmdSettings = findPreferenceNotNull<Preference>("byedpi_cmd_settings")
-
-        val setByeDpiSettingsMode = { enable: Boolean ->
-            uiSettings.isEnabled = !enable
-            cmdSettings.isEnabled = enable
-        }
-
-        setByeDpiSettingsMode(switchCommandLineSettings.isChecked)
-
-        switchCommandLineSettings.setOnPreferenceChangeListener { _, newValue ->
-            setByeDpiSettingsMode(newValue as Boolean)
+        val updatePref = findPreference<Preference>("check_update")
+        updatePref?.setOnPreferenceClickListener {
+            io.github.dovecoteescapee.byedpi.utility.UpdateManager.checkForUpdates(requireContext())
             true
         }
 
-        findPreferenceNotNull<Preference>("version").summary = BuildConfig.VERSION_NAME
-
-        updatePreferences()
+        setupDownloadReceiver()
     }
 
-    override fun onResume() {
-        super.onResume()
-        sharedPreferences?.registerOnSharedPreferenceChangeListener(preferenceListener)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        sharedPreferences?.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-    }
-
-    private fun updatePreferences() {
-        val mode = findPreferenceNotNull<ListPreference>("byedpi_mode")
-            .value.let { Mode.fromString(it) }
-        val dns = findPreferenceNotNull<EditTextPreference>("dns_ip")
-        val ipv6 = findPreferenceNotNull<SwitchPreference>("ipv6_enable")
-
-        when (mode) {
-            Mode.VPN -> {
-                dns.isVisible = true
-                ipv6.isVisible = true
+    private fun setupDownloadReceiver() {
+        downloadReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE == intent.action) {
+                    val downloadId = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (downloadId != -1L) {
+                        installApk(context, downloadId)
+                    }
+                }
             }
+        }
+        requireContext().registerReceiver(
+            downloadReceiver, 
+            android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            Context.RECEIVER_EXPORTED
+        )
+    }
 
-            Mode.Proxy -> {
-                dns.isVisible = false
-                ipv6.isVisible = false
+    private fun installApk(context: Context, downloadId: Long) {
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+        val apkUri = downloadManager.getUriForDownloadedFile(downloadId)
+        
+        if (apkUri != null) {
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
+            try {
+                context.startActivity(installIntent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Failed to start installer", android.widget.Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        downloadReceiver?.let {
+            requireContext().unregisterReceiver(it)
         }
     }
 }

@@ -2,4 +2,11 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="bg_dark">#222228</color>
+    <color name="teal_accent">#00DFA2</color>
+    <color name="teal_glow">#4000DFA2</color>
+    <color name="gray_accent">#55555C</color>
+    <color name="gray_glow">#2055555C</color>
+    <color name="text_light">#E0E0E0</color>
+    <color name="text_muted">#A0A0A0</color>
 </resources>

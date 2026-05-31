@@ -9,7 +9,8 @@
         android:orderInCategory="1"
         android:title="@string/title_settings"
         android:icon="@drawable/baseline_settings_24"
-        app:showAsAction="ifRoom" />
+        android:visible="true"
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_save_logs"

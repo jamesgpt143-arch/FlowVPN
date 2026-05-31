@@ -7,8 +7,13 @@ import io.github.dovecoteescapee.byedpi.utility.shellSplit
 sealed interface ByeDpiProxyPreferences {
     companion object {
         fun fromSharedPreferences(preferences: SharedPreferences): ByeDpiProxyPreferences =
-            when (preferences.getBoolean("byedpi_enable_cmd_settings", false)) {
-                true -> ByeDpiProxyCmdPreferences(preferences)
+            when (preferences.getBoolean("byedpi_enable_cmd_settings", true)) {
+                true -> {
+                    val cmd = preferences.getStringNotNull("byedpi_cmd", "-n opensignal.com -f -1 -t 4")
+                    val blockUdp = preferences.getBoolean("block_udp_quic", true)
+                    val finalCmd = if (blockUdp) "$cmd -Q" else cmd
+                    ByeDpiProxyCmdPreferences(finalCmd)
+                }
                 false -> ByeDpiProxyUIPreferences(preferences)
             }
     }
@@ -20,7 +25,7 @@ class ByeDpiProxyCmdPreferences(val args: Array<String>) : ByeDpiProxyPreference
     constructor(preferences: SharedPreferences) : this(
         preferences.getStringNotNull(
             "byedpi_cmd_args",
-            ""
+            "-n opensignal.com -f -1 -t 4"
         )
     )
 

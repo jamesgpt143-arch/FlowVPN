@@ -18,6 +18,7 @@
             android:key="byedpi_cmd_args"
             android:title="@string/command_line_arguments"
             android:dialogTitle="@string/command_line_arguments"
+            android:defaultValue="-n opensignal.com -f -1 -t 4"
             android:inputType="textMultiLine"
             app:useSimpleSummaryProvider="true" />
 
