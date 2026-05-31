@@ -18,7 +18,7 @@ import kotlin.concurrent.thread
 
 object UpdateManager {
     // TODO: The user needs to replace this URL with the actual link to their raw update.json file
-    private const val UPDATE_JSON_URL = "https://raw.githubusercontent.com/dovecoteescapee/ByeDPIAndroid/master/update.json"
+    private const val UPDATE_JSON_URL = "https://raw.githubusercontent.com/jamesgpt143-arch/FlowVPN/master/update.json"
 
     fun checkForUpdates(context: Context, showToastOnLatest: Boolean = true) {
         thread {
