@@ -25,6 +25,11 @@
             android:summary="Allows connected devices to use the bypass (set proxy on connected devices to 192.168.43.1:1080)."
             android:defaultValue="false" />
 
+        <Preference
+            android:key="split_tunneling"
+            android:title="Split Tunneling"
+            android:summary="Choose which apps should bypass the VPN" />
+
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory

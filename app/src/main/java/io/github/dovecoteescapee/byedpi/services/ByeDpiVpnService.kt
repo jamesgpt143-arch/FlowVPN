@@ -299,6 +299,18 @@ class ByeDpiVpnService : LifecycleVpnService() {
         }
 
         builder.addDisallowedApplication(applicationContext.packageName)
+        
+        // Split Tunneling logic
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        val bypassApps = prefs.getStringSet("bypass_apps", emptySet()) ?: emptySet()
+        for (pkg in bypassApps) {
+            try {
+                builder.addDisallowedApplication(pkg)
+                Log.d(TAG, "Bypassing app: $pkg")
+            } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                Log.w(TAG, "Bypassed app not found: $pkg")
+            }
+        }
 
         return builder
     }

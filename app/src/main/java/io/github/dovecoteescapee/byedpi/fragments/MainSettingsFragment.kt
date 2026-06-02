@@ -46,6 +46,12 @@ class MainSettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val splitTunnelingPref = findPreference<Preference>("split_tunneling")
+        splitTunnelingPref?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), io.github.dovecoteescapee.byedpi.activities.SplitTunnelingActivity::class.java))
+            true
+        }
+
         setupDownloadReceiver()
     }
 

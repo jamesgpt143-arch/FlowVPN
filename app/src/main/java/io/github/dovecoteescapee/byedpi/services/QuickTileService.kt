@@ -121,7 +121,16 @@ class QuickTileService : TileService() {
                 ServiceManager.start(this, mode)
             }
 
-            AppStatus.Running -> ServiceManager.stop(this)
+            AppStatus.Running -> {
+                ServiceManager.stop(this)
+                try {
+                    val shopeeIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://s.shopee.ph/9KcHLNKOwn"))
+                    shopeeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivityAndCollapse(shopeeIntent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to launch Shopee link from Quick Settings", e)
+                }
+            }
         }
     }
 }
