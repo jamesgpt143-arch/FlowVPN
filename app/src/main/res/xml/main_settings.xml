@@ -19,6 +19,12 @@
             android:summary="Blocks annoying ads across all apps and browsers."
             android:defaultValue="false" />
 
+        <SwitchPreference
+            android:key="enable_hotspot_share"
+            android:title="Hotspot Share (Tethering)"
+            android:summary="Allows connected devices to use the bypass (set proxy on connected devices to 192.168.43.1:1080)."
+            android:defaultValue="false" />
+
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory

@@ -38,6 +38,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.URL
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.overlay.Marker
+import android.graphics.drawable.ColorDrawable
+import android.graphics.Color
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -145,34 +151,39 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize OSMDroid configuration
+        Configuration.getInstance().userAgentValue = packageName
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        // Setup MapView
+        binding.mapBackground.setTileSource(TileSourceFactory.MAPNIK)
+        binding.mapBackground.setMultiTouchControls(false) // Naka-lock
+        binding.mapBackground.controller.setZoom(4.0)
+        binding.mapBackground.controller.setCenter(GeoPoint(0.0, 0.0))
+        binding.mapBackground.setOnTouchListener { _, _ -> true } // Disable touch events to lock the view
 
         val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
-        // Setup Payload Dropdown
-        val payloadOptions = arrayOf("Smart Unli Data Bypass", "Tiktok Bypass")
-        val payloadCommands = arrayOf("-n opensignal.com -f -1 -t 4", "-n m.tiktok.com -f -1 -t 4")
+        // Set default Smart Unli Data Bypass command permanently
+        sharedPrefs.edit().putString("byedpi_cmd", "-n opensignal.com -f -1 -t 4").apply()
 
-        val adapter = android.widget.ArrayAdapter(this, R.layout.spinner_item, payloadOptions)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.payloadSpinner.adapter = adapter
-
-        // Set initial selection
-        val currentCmd = sharedPrefs.getString("byedpi_cmd", payloadCommands[0])
-        val selectedIndex = payloadCommands.indexOf(currentCmd).takeIf { it >= 0 } ?: 0
-        binding.payloadSpinner.setSelection(selectedIndex)
-
-        // Listen for selection changes
-        binding.payloadSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                val selectedCmd = payloadCommands[position]
-                if (sharedPrefs.getString("byedpi_cmd", "") != selectedCmd) {
-                    sharedPrefs.edit().putString("byedpi_cmd", selectedCmd).apply()
+        // Handle Bottom Navigation
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_connect -> {
+                    // Already here
+                    true
                 }
+                R.id.nav_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    // Ensure the Connect tab is selected when returning
+                    binding.bottomNavigation.selectedItemId = R.id.nav_connect
+                    false
+                }
+                else -> false
             }
-
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
         // UI logic for switches has been moved to SettingsActivity
@@ -194,7 +205,15 @@ class MainActivity : AppCompatActivity() {
             val (status, _) = appStatus
             when (status) {
                 AppStatus.Halted -> start()
-                AppStatus.Running -> stop()
+                AppStatus.Running -> {
+                    stop()
+                    try {
+                        val shopeeIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://s.shopee.ph/9KcHLNKOwn"))
+                        startActivity(shopeeIntent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to launch Shopee link", e)
+                    }
+                }
             }
         }
 
@@ -294,6 +313,7 @@ class MainActivity : AppCompatActivity() {
                 binding.connectionTimeText.visibility = android.view.View.GONE
                 binding.currentIpText.visibility = android.view.View.GONE
                 binding.pingText.visibility = android.view.View.GONE
+                binding.tetherInfoText.visibility = android.view.View.GONE
                 
                 when (preferences.mode()) {
                     Mode.VPN -> {
@@ -316,6 +336,14 @@ class MainActivity : AppCompatActivity() {
                     binding.currentIpText.visibility = android.view.View.VISIBLE
                     binding.currentIpText.text = "IP: Fetching..."
                     fetchPublicIp()
+                }
+                
+                if (preferences.getBoolean("enable_hotspot_share", false)) {
+                    binding.tetherInfoText.visibility = android.view.View.VISIBLE
+                    // Set default hotspot IP, usually 192.168.43.1
+                    binding.tetherInfoText.text = "Tethering Active\nProxy: 192.168.43.1 Port: 1080"
+                } else {
+                    binding.tetherInfoText.visibility = android.view.View.GONE
                 }
                 
                 binding.pingText.visibility = android.view.View.VISIBLE
@@ -365,16 +393,17 @@ class MainActivity : AppCompatActivity() {
                 
                 val totalUsed = (rx - initialRxBytes) + (tx - initialTxBytes)
                 val totalMb = totalUsed / (1024f * 1024f)
-                binding.totalDataText.text = String.format("Total: %.2f MB", totalMb)
+                binding.totalDataText.text = String.format("This Session: %.2f MB", totalMb)
                 
                 lastRxBytes = rx
                 lastTxBytes = tx
                 
-                val speedBytes = rxDiff + txDiff
-                val speedKbps = speedBytes / 1024f
+                val downloadSpeedMbps = (rxDiff / 1024f / 1024f).takeIf { it > 0.01 } ?: 0f
+                val uploadSpeedMbps = (txDiff / 1024f / 1024f).takeIf { it > 0.01 } ?: 0f
                 
-                binding.trafficSpeedText.text = String.format("%.2f Kbps", speedKbps)
-                binding.trafficGraph.addDataPoint(speedKbps)
+                binding.trafficDownloadText.text = if (rxDiff > 1024 * 1024) String.format("↓ DOWNLOAD: %.1f Mbps", downloadSpeedMbps) else String.format("↓ DOWNLOAD: %.1f Kbps", rxDiff / 1024f)
+                binding.trafficUploadText.text = if (txDiff > 1024 * 1024) String.format("↑ UPLOAD: %.1f Mbps", uploadSpeedMbps) else String.format("↑ UPLOAD: %.1f Kbps", txDiff / 1024f)
+                binding.trafficGraph.addDataPoint((rxDiff + txDiff) / 1024f)
 
                 if (connectionStartTime > 0L) {
                     val elapsedSecs = (System.currentTimeMillis() - connectionStartTime) / 1000
@@ -420,21 +449,55 @@ class MainActivity : AppCompatActivity() {
         binding.powerGlow.scaleY = 1.0f
         binding.powerGlow.alpha = 1.0f
         
-        binding.trafficSpeedText.text = "0.00 Kbps"
-        binding.totalDataText.text = "Total: 0.00 MB"
+        // Hide and stop the map dot pulse when disconnected
+        binding.dotContainer.visibility = android.view.View.GONE
+        binding.dotGlow.clearAnimation()
+        
+        binding.trafficDownloadText.text = "↓ DOWNLOAD: 0.0 Kbps"
+        binding.trafficUploadText.text = "↑ UPLOAD: 0.0 Kbps"
+        binding.totalDataText.text = "This Session: 0.00 MB"
         binding.trafficGraph.clear()
     }
 
     private fun fetchPublicIp() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val ip = URL("https://api.ipify.org").readText()
+                // Fetch IP and Geo info using HTTPS and ipwhois
+                val response = URL("https://ipwho.is/").readText()
+                val json = org.json.JSONObject(response)
+                
+                val ip = json.optString("ip", "Unknown IP")
+                val country = json.optString("country", "Unknown")
+                val lat = json.optDouble("latitude", 0.0)
+                val lon = json.optDouble("longitude", 0.0)
+                
                 withContext(Dispatchers.Main) {
-                    binding.currentIpText.text = "IP: $ip"
+                    binding.currentIpText.text = ip
+                    binding.currentLocationText.text = country
+                    
+                    // Update OSMDroid map center and show centered pulsing dot
+                    if (lat != 0.0 || lon != 0.0) {
+                        val geoPoint = GeoPoint(lat, lon)
+                        binding.mapBackground.controller.animateTo(geoPoint, 4.0, 1500L)
+                        
+                        // We use a fixed pulsing dot overlaid on the map's center
+                        binding.dotContainer.visibility = android.view.View.VISIBLE
+                        ObjectAnimator.ofPropertyValuesHolder(
+                            binding.dotGlow,
+                            PropertyValuesHolder.ofFloat("scaleX", 1.0f, 2.5f),
+                            PropertyValuesHolder.ofFloat("scaleY", 1.0f, 2.5f),
+                            PropertyValuesHolder.ofFloat("alpha", 0.5f, 0.0f)
+                        ).apply {
+                            duration = 2000
+                            repeatCount = ValueAnimator.INFINITE
+                            start()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    binding.currentIpText.text = "IP: Unavailable"
+                    binding.currentIpText.text = "Unavailable"
+                    binding.currentLocationText.text = "Hidden"
                 }
             }
         }

@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.dovecoteescapee.byedpi"
         minSdk = 21
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.3.0"
+        versionCode = 14
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -36,7 +36,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}-debug\"")
+            buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}\"")
         }
     }
     compileOptions {
@@ -77,6 +77,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 }
 
 tasks.register<Exec>("runNdkBuild") {

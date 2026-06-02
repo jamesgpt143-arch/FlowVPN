@@ -11,7 +11,12 @@ sealed interface ByeDpiProxyPreferences {
                 true -> {
                     val cmd = preferences.getStringNotNull("byedpi_cmd", "-n opensignal.com -f -1 -t 4")
                     val blockUdp = preferences.getBoolean("block_udp_quic", true)
-                    val finalCmd = if (blockUdp) "$cmd -Q" else cmd
+                    val hotspotShare = preferences.getBoolean("enable_hotspot_share", false)
+                    
+                    var finalCmd = cmd
+                    if (blockUdp) finalCmd = "$finalCmd -Q"
+                    if (hotspotShare) finalCmd = "$finalCmd -i 0.0.0.0"
+                    
                     ByeDpiProxyCmdPreferences(finalCmd)
                 }
                 false -> ByeDpiProxyUIPreferences(preferences)
